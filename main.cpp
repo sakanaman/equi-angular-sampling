@@ -1,7 +1,7 @@
 #include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
 #include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
 #include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
-#define EQUI_ANG
+
 
 struct Vec
 {                   // Usage: time ./smallpt 5000 && xv image.ppm
@@ -50,16 +50,8 @@ struct Sphere
     }
 };
 Sphere spheres[] = {
-    //Scene: radius, position, emission, color, material
-    // Sphere(1e5, Vec(1e5 + 1, 40.8, 81.6), Vec(), Vec(.75, .25, .25), DIFF),   //Left
-    // Sphere(1e5, Vec(-1e5 + 99, 40.8, 81.6), Vec(), Vec(.25, .25, .75), DIFF), //Rght
-    // Sphere(1e5, Vec(50, 40.8, 1e5), Vec(), Vec(.75, .75, .75), DIFF),         //Back
-    // Sphere(1e5, Vec(50, 40.8, -1e5 + 170), Vec(), Vec(), DIFF),               //Frnt
-    // Sphere(1e5, Vec(50, 1e5, 81.6), Vec(), Vec(.75, .75, .75), DIFF),         //Botm
-    // Sphere(1e5, Vec(50, -1e5 + 81.6, 81.6), Vec(), Vec(.75, .75, .75), DIFF), //Top
-    Sphere(16.5, Vec(27, 30.5, 78), Vec(), Vec(1, 1, 1) * .999, SPEC),        //Mirr
-    Sphere(16.5, Vec(73, 30.5, 78), Vec(), Vec(1, 1, 1) * .999, REFR)        //Glas
-    //Sphere(8, Vec(50, 52, 81.6), Vec(12, 12, 12), Vec(), DIFF)     //Lite
+    Sphere(16.5, Vec(27, 30.5, 78), Vec(), Vec(1, 1, 1) * .999, SPEC),
+    Sphere(16.5, Vec(73, 30.5, 78), Vec(), Vec(1, 1, 1) * .999, REFR)
 };
 
 inline double clamp(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
@@ -96,8 +88,6 @@ double equianglar_sample(const Ray& ray, const Vec& light_pos, const double u,
     double a = tNear - delta;
     double b = tFar - delta;
 
-    //if(a > b) printf("それはヤバイで\n");
-    //printf("%f\n", u);
     double t;
     if(D > kEPS)
     {
@@ -114,8 +104,6 @@ double equianglar_sample(const Ray& ray, const Vec& light_pos, const double u,
         *pdf = a*b / (b - a) / (t*t);
     }
     
-    //*contribution = (*contribution) + (light_power * (1.0/(D*D + t*t)) * sigma_s * exp(-sigma_t*(t + delta + sqrt(D*D + t*t))) * (1.0/(*pdf)));
-    //printf("%f\n",delta + t); -->値は正常
     return delta + t;
 }
 
@@ -145,9 +133,8 @@ Vec radiance_density(const Ray &r, int depth, unsigned short *Xi)
     {
         tNear = 0.0;
         tFar = t;
-        // printf("in"); -->入ってる
 
-        //点光源と衝突点でNEE
+        //点光源からの寄与計算
         const Sphere &obj = spheres[id];
         Vec hitPos = r.o + r.d * t;
         Vec h2l = (point_light-hitPos).norm();
@@ -163,8 +150,6 @@ Vec radiance_density(const Ray &r, int depth, unsigned short *Xi)
         {
             contribute = contribute + (Albedo * (1.0/M_PI)).mult(light_power * costerm * (1.0/(l*l))) * exp(-sigma_t*(l + t));
         }
-        // contribute = Vec(1.0, 0, 0);
-        // return contribute;-->ちゃんと衝突してる。
     }
 
     /// Equi-Angular Sampleの開始だ!!
@@ -172,7 +157,6 @@ Vec radiance_density(const Ray &r, int depth, unsigned short *Xi)
     double pdf, scatter_dist;
     scatter_dist = distance_sample(r, point_light, erand48(Xi), 
                                     tNear, tFar, &pdf);
-    //printf("%f\n",pdf);
 
     Vec scatter_point = r.o + r.d * scatter_dist;
     Vec scatter_dir = (point_light - scatter_point).norm();
@@ -183,17 +167,10 @@ Vec radiance_density(const Ray &r, int depth, unsigned short *Xi)
     bool is_shadowhit = intersect(shadow_r, shadow_t, shadow_id);
     if(!is_shadowhit || (is_shadowhit && shadow_t > (point_light - scatter_point).length()))
     {
-        // printf("in"); --> 入ってる
         double l2s = (point_light - scatter_point).length();
-        //printf("%f\n", l2s);
-
-        Vec plus = light_power * (1.0/(l2s * l2s)) * sigma_s * exp(-sigma_t*(scatter_dist + l2s)) * (1.0/pdf);
-        //printf("%f\n", -sigma_t*(scatter_dist + l2s));
-        //printf("(%f, %f, %f)\n", plus.x, plus.y, plus.z);
 
         contribute = contribute + light_power * (1.0/(l2s * l2s)) * sigma_s * exp(-sigma_t*(scatter_dist + l2s)) * (1.0/pdf);
     }
-    //printf("(%f, %f, %f)\n",contribute.x,contribute.y,contribute.z);
     return contribute;
 }
 
@@ -214,9 +191,8 @@ Vec radiance_equiangular(const Ray &r, int depth, unsigned short *Xi)
     {
         tNear = 0.0;
         tFar = t;
-        // printf("in"); -->入ってる
 
-        //点光源と衝突点でNEE
+        //点光源からの寄与計算
         const Sphere &obj = spheres[id];
         Vec hitPos = r.o + r.d * t;
         Vec h2l = (point_light-hitPos).norm();
@@ -232,8 +208,6 @@ Vec radiance_equiangular(const Ray &r, int depth, unsigned short *Xi)
         {
             contribute = contribute + (Albedo * (1.0/M_PI)).mult(light_power * costerm * (1.0/(l*l))) * exp(-sigma_t*(l + t));
         }
-        // contribute = Vec(1.0, 0, 0);
-        // return contribute;-->ちゃんと衝突してる。
     }
 
     /// Equi-Angular Sampleの開始だ!!
@@ -241,7 +215,6 @@ Vec radiance_equiangular(const Ray &r, int depth, unsigned short *Xi)
     double pdf, scatter_dist;
     scatter_dist = equianglar_sample(r, point_light, erand48(Xi), 
                                     tNear, tFar, &pdf);
-    //printf("%f\n",pdf);
 
     Vec scatter_point = r.o + r.d * scatter_dist;
     Vec scatter_dir = (point_light - scatter_point).norm();
@@ -252,17 +225,10 @@ Vec radiance_equiangular(const Ray &r, int depth, unsigned short *Xi)
     bool is_shadowhit = intersect(shadow_r, shadow_t, shadow_id);
     if(!is_shadowhit || (is_shadowhit && shadow_t > (point_light - scatter_point).length()))
     {
-        // printf("in"); --> 入ってる
         double l2s = (point_light - scatter_point).length();
-        //printf("%f\n", l2s);
-
-        Vec plus = light_power * (1.0/(l2s * l2s)) * sigma_s * exp(-sigma_t*(scatter_dist + l2s)) * (1.0/pdf);
-        //printf("%f\n", -sigma_t*(scatter_dist + l2s));
-        //printf("(%f, %f, %f)\n", plus.x, plus.y, plus.z);
 
         contribute = contribute + light_power * (1.0/(l2s * l2s)) * sigma_s * exp(-sigma_t*(scatter_dist + l2s)) * (1.0/pdf);
     }
-    //printf("(%f, %f, %f)\n",contribute.x,contribute.y,contribute.z);
     return contribute;
 }
 
