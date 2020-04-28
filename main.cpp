@@ -152,7 +152,7 @@ Vec radiance_density(const Ray &r, int depth, unsigned short *Xi)
         }
     }
 
-    /// Equi-Angular Sampleの開始だ!!
+    /// Distance Sampleの開始だ!!
 
     double pdf, scatter_dist;
     scatter_dist = distance_sample(r, point_light, erand48(Xi), 
